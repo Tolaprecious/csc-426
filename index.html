@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>App Suite</title>
+  
+  <style>
+    /* Global Styles */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; background: #dedede; padding: 20px; }
+    
+    /* Menu Switcher */
+    .menu { margin-bottom: 20px; }
+    .menu button { padding: 10px 20px; margin: 0 5px; cursor: pointer; border: none; border-radius: 5px; background: #333; color: white; }
+    
+    /* App Containers */
+    .app-section { display: none; width: 100%; max-width: 400px; }
+    .active { display: block; }
+
+    /* Auth App Styles */
+    .auth-box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h2 { text-align: center; margin-bottom: 15px; }
+    input { width: 100%; padding: 10px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; }
+    .auth-btns { display: flex; justify-content: space-between; margin-top: 15px; }
+    .auth-btn { width: 48%; padding: 10px; border: none; cursor: pointer; border-radius: 5px; }
+    #actionBtn { background: #16a34a; color: white; }
+    #resetBtn { background: #c0c0c0; color: black; }
+    .message { text-align: center; margin-bottom: 10px; font-size: 14px; min-height: 1em; }
+    .message.error { color: red; }
+    .message.success { color: green; }
+    .toggle { text-align: center; margin-top: 10px; font-size: 14px; }
+    .toggle a { color: #2563eb; cursor: pointer; text-decoration: none; }
+
+    /* Calculator Styles (Integrated) */
+    .calc { background: #ffffff; border: 1px solid #ddd; border-radius: 16px; padding: 1.25rem; }
+    .display { background: #f7f7f5; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px 16px; margin-bottom: 1rem; min-height: 80px; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; }
+    .expr { font-size: 13px; color: #aaa; min-height: 18px; word-break: break-all; }
+    .result { font-size: 32px; font-weight: 500; color: #1a1a1a; }
+    .result.error { color: #c0392b; font-size: 22px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .btn { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; height: 50px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .btn.op { background: #f0efea; }
+    .btn.clear { background: #fde8e8; color: #c0392b; }
+    .btn.eq { background: #3c3489; color: #eeedfe; }
+    .span2 { grid-column: span 2; }
+  </style>
+</head>
+<body>
+
+  <div class="menu">
+    <button onclick="showApp('auth')">Login App</button>
+    <button onclick="showApp('calc')">Calculator</button>
+  </div>
+
+  <div id="auth" class="app-section">
+    <div class="auth-box">
+      <h2 id="formTitle">Login</h2>
+      <div id="message" class="message"></div>
+      <input type="text" id="username" placeholder="Username" />
+      <input type="password" id="password" placeholder="Password" />
+      <div class="auth-btns">
+        <button id="actionBtn" class="auth-btn">Login</button>
+        <button id="resetBtn" class="auth-btn">Reset</button>
+      </div>
+      <p class="toggle">
+        <span id="toggleText">Don't have an account?</span>
+        <a href="#" id="toggleLink">Sign up</a>
+      </p>
+    </div>
+  </div>
+
+  <div id="calc" class="app-section">
+    <div class="calc">
+      <div class="display">
+        <div class="expr" id="expr"></div>
+        <div class="result" id="result">0</div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <script>
+    // App Switcher logic
+    function showApp(id) {
+      document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    /* Auth Script */
+    let isLogin = true;
+    const username = document.getElementById("username");
+    const password = document.getElementById("password");
+const message = document.getElementById("message");
+    const actionBtn = document.getElementById("actionBtn");
+    const toggleLink = document.getElementById("toggleLink");
+    const toggleText = document.getElementById("toggleText");
+    const resetBtn = document.getElementById("resetBtn");
+    const formTitle = document.getElementById("formTitle");
+
+    toggleLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      isLogin = !isLogin;
+      formTitle.textContent = isLogin ? "Login" : "Sign Up";
+      actionBtn.textContent = isLogin ? "Login" : "Register";
+      toggleText.textContent = isLogin ? "Don't have an account?" : "Already have an account?";
+      toggleLink.textContent = isLogin ? "Sign up" : "Login";
+    });
+
+    resetBtn.addEventListener("click", () => { username.value = ""; password.value = ""; message.textContent = ""; });
+
+    actionBtn.addEventListener("click", () => {
+      const user = username.value.trim();
+      const pass = password.value.trim();
+      let users = JSON.parse(localStorage.getItem("users")) || {};
+      if(isLogin) {
+        message.textContent = (users[user] && users[user] === pass) ? "Success!" : "Invalid credentials.";
+      } else {
+        users[user] = pass;
+        localStorage.setItem("users", JSON.stringify(users));
+        message.textContent = "Account created!";
+      }
+    });
+
+    /* Calculator Script */
+    const grid = document.getElementById("grid");
+    const displayEl = document.getElementById("result");
+    const exprEl = document.getElementById("expr");
+    let current = "0", expr = "", justEval = false;
+
+    const buttons = [
+      {l: "C", a: "clear", c: "clear"}, {l: "( )", a: "paren", c: "op"}, {l: "%", a: "val", v: "%"}, {l: "/", a: "val", v: "/"},
+      {l: "7", a: "digit", v: "7"}, {l: "8", a: "digit", v: "8"}, {l: "9", a: "digit", v: "9"}, {l: "*", a: "val", v: "*"},
+      {l: "4", a: "digit", v: "4"}, {l: "5", a: "digit", v: "5"}, {l: "6", a: "digit", v: "6"}, {l: "-", a: "val", v: "-"},
+      {l: "1", a: "digit", v: "1"}, {l: "2", a: "digit", v: "2"}, {l: "3", a: "digit", v: "3"}, {l: "+", a: "val", v: "+"},
+      {l: "0", a: "digit", v: "0", c: "span2"}, {l: ".", a: "digit", v: "."}, {l: "=", a: "eval", c: "eq"}
+    ];
+
+    buttons.forEach(b => {
+      const btn = document.createElement("button");
+      btn.textContent = b.l;
+      btn.className = "btn " + (b.c || "");
+      btn.onclick = () => {
+        if(b.a === "digit") current = (current === "0") ? b.v : current + b.v;
+        if(b.a === "val") { expr += current + b.v; current = "0"; }
+        if(b.a === "clear") { current = "0"; expr = ""; }
+        if(b.a === "eval") { current = eval(expr + current).toString(); expr = ""; }
+        displayEl.textContent = current;
+        exprEl.textContent = expr;
+      };
+      grid.appendChild(btn);
+    });
+  </script>
+</body>
+</html>
